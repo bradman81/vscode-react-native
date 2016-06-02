@@ -3,6 +3,7 @@
 
 import * as vscode from "vscode";
 import * as Q from "q";
+import * as Exponent from "xdl";
 import {CommandExecutor} from "../common/commandExecutor";
 import {SettingsHelper} from "./settingsHelper";
 import {Log} from "../common/log/log";
@@ -39,6 +40,16 @@ export class CommandPaletteHandler {
     public stopPackager(): Q.Promise<void> {
         return this.executeCommandInContext("stopPackager", () => this.reactNativePackager.stop())
             .then(() => this.reactNativePackageStatusIndicator.updatePackagerStatus(PackagerStatus.PACKAGER_STOPPED));
+    }
+
+    public publishToExpHost(): Q.Promise<void> {
+        return this.executeCommandInContext("publishToExpHost", () => {
+            this.executePublishToExpHost().then((didPublish) => {
+                if (!didPublish) {
+                    Log.logMessage("Publishing was unsuccessful. Please make sure you are login in Exponent and your project is a valid Exponentjs project");
+                }
+            });
+        });
     }
 
     /**
@@ -113,6 +124,17 @@ export class CommandPaletteHandler {
                     vscode.window.showErrorMessage("Current workspace is not a React Native project.");
                 }
             });
+        });
+    }
+
+    private executePublishToExpHost(): Q.Promise<boolean> {
+        Log.logMessage("Publishing app to Exponent server. This might take a moment");
+        return Q(Exponent.Exp.publishAsync(vscode.workspace.rootPath)).then(response => {
+            if (response.err || !response.expUrl) {
+                return false;
+            }
+            Log.logMessage(`App successfully published to ${response.expUrl}`);
+            return true;
         });
     }
 }

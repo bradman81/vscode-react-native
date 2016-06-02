@@ -44,6 +44,10 @@
             {
                 "command": "reactNative.stopPackager",
                 "title": "React Native: Stop Packager"
+            },
+            {
+                "command": "reactNative.publishToExpHost",
+                "title": "React Native: Publish to Exponent"
             }
         ],
         "debuggers": [
@@ -147,7 +151,8 @@
         "typechecker": "2.0.8",
         "ultron": "1.0.2",
         "vscode-extension-telemetry": "0.0.5",
-        "ws": "1.0.1"
+        "ws": "1.0.1",
+        "xdl": "0.0.34"
     },
     "devDependencies": {
         "del": "^2.2.0",
