@@ -81,6 +81,16 @@
                         "internalDebuggerPort": 9090,
                         "sourceMaps": true,
                         "outDir": "${workspaceRoot}/.vscode/.react"
+                    },
+                    {
+                        "name": "Debug external packager",
+                        "program": "${workspaceRoot}/.vscode/launchReactNative.js",
+                        "type": "reactnative",
+                        "request": "launch",
+                        "platform": "external",
+                        "internalDebuggerPort": 9090,
+                        "sourceMaps": true,
+                        "outDir": "${workspaceRoot}/.vscode/.react"
                     }
                 ],
                 "configurationAttributes": {

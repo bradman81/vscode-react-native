@@ -11,7 +11,8 @@ import {InternalErrorCode} from "../common/error/internalErrorCode";
  */
 export enum TargetPlatformId {
     ANDROID,
-    IOS
+    IOS,
+    EXTERNAL
 }
 
 export class TargetPlatformHelper {
@@ -24,6 +25,8 @@ export class TargetPlatformHelper {
                 return TargetPlatformId.ANDROID;
             case "ios":
                 return TargetPlatformId.IOS;
+            case "external":
+                return TargetPlatformId.EXTERNAL;
             default:
                 throw new Error(`The target platform ${platformName} is not supported.`);
         }

@@ -94,6 +94,10 @@ export class AndroidPlatform implements IAppPlatform {
         return this.adb.reloadAppInDebugMode(this.runOptions.projectRoot, this.packageName, this.debugTarget.id);
     }
 
+    public startPackager(): Q.Promise<void> {
+        return this.remoteExtension.startPackager();
+    }
+
     private initializeTargetDevicesAndPackageName(): Q.Promise<void> {
         return this.adb.getConnectedDevices().then(devices => {
             this.devices = devices;
