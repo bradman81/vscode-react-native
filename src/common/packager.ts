@@ -82,7 +82,7 @@ export class Packager {
                 } else {
                     Log.logMessage("Packager is already running.");
                     if (!this.packagerProcess) {
-                        Log.logWarning(ErrorHelper.getWarning("React Native Packager running outside of VS Code. If you want to debug please use the 'Debug external packager' option"));
+                        Log.logWarning(ErrorHelper.getWarning("React Native Packager running outside of VS Code. If you want to debug please use the 'Attach to packager' option"));
                     }
                 }
             });

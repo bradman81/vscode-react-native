@@ -11,8 +11,7 @@ import {InternalErrorCode} from "../common/error/internalErrorCode";
  */
 export enum TargetPlatformId {
     ANDROID,
-    IOS,
-    EXTERNAL
+    IOS
 }
 
 export class TargetPlatformHelper {
@@ -25,8 +24,6 @@ export class TargetPlatformHelper {
                 return TargetPlatformId.ANDROID;
             case "ios":
                 return TargetPlatformId.IOS;
-            case "external":
-                return TargetPlatformId.EXTERNAL;
             default:
                 throw new Error(`The target platform ${platformName} is not supported.`);
         }
@@ -36,6 +33,9 @@ export class TargetPlatformHelper {
      * Checks whether the current host platform supports the target mobile platform.
      */
     public static checkTargetPlatformSupport(platformName: string): void {
+        if (platformName === "all") {
+            return;
+        }
         let targetPlatformId = TargetPlatformHelper.getTargetPlatformId(platformName);
         try {
             if (!HostPlatform.isCompatibleWithTarget(targetPlatformId)) {

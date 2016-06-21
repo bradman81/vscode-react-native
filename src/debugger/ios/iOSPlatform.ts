@@ -7,7 +7,7 @@ import * as path from "path";
 import {Log} from "../../common/log/log";
 import {ChildProcess} from "../../common/node/childProcess";
 import {CommandExecutor} from "../../common/commandExecutor";
-import {IAppPlatform} from "../platformResolver";
+import {GeneralMobilePlatform} from "../generalMobilePlatform";
 import {Compiler} from "./compiler";
 import {DeviceDeployer} from "./deviceDeployer";
 import {DeviceRunner} from "./deviceRunner";
@@ -15,9 +15,8 @@ import {IRunOptions} from "../../common/launchArgs";
 import {PlistBuddy} from "../../common/ios/plistBuddy";
 import {IOSDebugModeManager} from "../../common/ios/iOSDebugModeManager";
 import {OutputVerifier, PatternToFailure} from "../../common/outputVerifier";
-import {RemoteExtension} from "../../common/remoteExtension";
 
-export class IOSPlatform implements IAppPlatform {
+export class IOSPlatform extends GeneralMobilePlatform {
     public static DEFAULT_IOS_PROJECT_RELATIVE_PATH = "ios";
 
     private static deviceString = "device";
@@ -25,12 +24,9 @@ export class IOSPlatform implements IAppPlatform {
 
     private plistBuddy = new PlistBuddy();
 
-    private projectPath: string;
     private simulatorTarget: string;
     private isSimulator: boolean;
     private iosProjectPath: string;
-
-    private remoteExtension: RemoteExtension;
 
     // We should add the common iOS build/run erros we find to this list
     private static RUN_IOS_FAILURE_PATTERNS: PatternToFailure = {
@@ -40,12 +36,12 @@ export class IOSPlatform implements IAppPlatform {
 
     private static RUN_IOS_SUCCESS_PATTERNS = ["BUILD SUCCEEDED"];
 
-    constructor(private runOptions: IRunOptions, { remoteExtension = RemoteExtension.atProjectRootPath(runOptions.projectRoot) } = {}) {
-        this.projectPath = this.runOptions.projectRoot;
+    // We set remoteExtension = null so that if there is an instance of iOSPlatform that wants to have it's custom remoteExtension it can. This is specifically useful for tests.
+    constructor(runOptions: IRunOptions, { remoteExtension = null } = {}) {
+        super(runOptions, { remoteExtension: remoteExtension });
         this.simulatorTarget = this.runOptions.target || IOSPlatform.simulatorString;
         this.isSimulator = this.simulatorTarget.toLowerCase() !== IOSPlatform.deviceString;
         this.iosProjectPath = path.join(this.projectPath, this.runOptions.iosRelativeProjectPath);
-        this.remoteExtension = remoteExtension;
     }
 
     public runApp(): Q.Promise<void> {
@@ -116,8 +112,8 @@ export class IOSPlatform implements IAppPlatform {
         });
     }
 
-    public startPackager(): Q.Promise<void> {
-        return this.remoteExtension.startPackager();
+    public prewarmBundleCache(): Q.Promise<void> {
+        return this.remoteExtension.prewarmBundleCache(this.platformName);
     }
 
     private generateSuccessPatterns(): Q.Promise<string[]> {

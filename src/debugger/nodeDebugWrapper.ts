@@ -158,7 +158,7 @@ new EntryPointHandler(ProcessType.Debugger).runApp(appName, () => version,
 
             // We do not permit arbitrary args to be passed to our process
             args.args = [
-                args.platform,
+                args.platform || "all",
                 debugServerListeningPort.toString(),
                 !isNullOrUndefined(args.iosRelativeProjectPath) ? args.iosRelativeProjectPath : IOSPlatform.DEFAULT_IOS_PROJECT_RELATIVE_PATH,
                 args.target || "simulator",

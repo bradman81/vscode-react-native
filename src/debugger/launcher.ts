@@ -33,46 +33,43 @@ export class Launcher {
                     const resolver = new PlatformResolver();
                     return this.parseRunOptions().then(runOptions => {
                         const mobilePlatform = resolver.resolveMobilePlatform(runOptions.platform, runOptions);
-                        if (!mobilePlatform) {
-                            throw new RangeError("The target platform could not be read. Did you forget to add it to the launch.json configuration arguments?");
-                        } else {
-                            const sourcesStoragePath = path.join(this.projectRootPath, ".vscode", ".react");
-                            return Q({})
-                                .then(() => {
-                                    generator.step("checkPlatformCompatibility");
-                                    TargetPlatformHelper.checkTargetPlatformSupport(runOptions.platform);
-                                    generator.step("startPackager");
-                                    return mobilePlatform.startPackager();
-                                })
-                                .then(() => {
-                                    let scriptImporter = new ScriptImporter(runOptions.packagerPort, sourcesStoragePath);
-                                    return scriptImporter.downloadDebuggerWorker(sourcesStoragePath).then(() => {
-                                        Log.logMessage("Downloaded debuggerWorker.js (Logic to run the React Native app) from the Packager.");
-                                    });
-                                })
-                                // We've seen that if we don't prewarm the bundle cache, the app fails on the first attempt to connect to the debugger logic
-                                // and the user needs to Reload JS manually. We prewarm it to prevent that issue
-                                .then(() => {
-                                    generator.step("prewarmBundleCache");
-                                    Log.logMessage("Prewarming bundle cache. This may take a while ...");
-                                    return this.remoteExtension.prewarmBundleCache(runOptions.platform);
-                                })
-                                .then(() => {
-                                    generator.step("mobilePlatform.runApp");
-                                    Log.logMessage("Building and running application.");
-                                    return mobilePlatform.runApp();
-                                })
-                                .then(() => {
-                                    generator.step("Starting App Worker");
-                                    Log.logMessage("Starting debugger app worker.");
-                                    return new MultipleLifetimesAppWorker(runOptions.packagerPort, sourcesStoragePath, runOptions.debugAdapterPort).start();
-                                }) // Start the app worker
-                                .then(() => {
-                                    generator.step("mobilePlatform.enableJSDebuggingMode");
-                                    return mobilePlatform.enableJSDebuggingMode();
-                                }).then(() =>
-                                    Log.logMessage("Debugging session started successfully."));
-                        }
+                        const sourcesStoragePath = path.join(this.projectRootPath, ".vscode", ".react");
+                        return Q({})
+                            .then(() => {
+                                generator.step("checkPlatformCompatibility");
+                                TargetPlatformHelper.checkTargetPlatformSupport(runOptions.platform);
+                                generator.step("startPackager");
+                                return mobilePlatform.startPackager();
+                            })
+                            .then(() => {
+                                let scriptImporter = new ScriptImporter(runOptions.packagerPort, sourcesStoragePath);
+                                return scriptImporter.downloadDebuggerWorker(sourcesStoragePath).then(() => {
+                                    Log.logMessage("Downloaded debuggerWorker.js (Logic to run the React Native app) from the Packager.");
+                                });
+                            })
+                            // We've seen that if we don't prewarm the bundle cache, the app fails on the first attempt to connect to the debugger logic
+                            // and the user needs to Reload JS manually. We prewarm it to prevent that issue
+                            .then(() => {
+                                generator.step("prewarmBundleCache");
+                                Log.logMessage("Prewarming bundle cache. This may take a while ...");
+                                return mobilePlatform.prewarmBundleCache();
+                            })
+                            .then(() => {
+                                generator.step("mobilePlatform.runApp");
+                                Log.logMessage("Building and running application.");
+                                return mobilePlatform.runApp();
+                            })
+                            .then(() => {
+                                generator.step("Starting App Worker");
+                                Log.logMessage("Starting debugger app worker.");
+                                return new MultipleLifetimesAppWorker(runOptions.packagerPort, sourcesStoragePath, runOptions.debugAdapterPort).start();
+                            }) // Start the app worker
+                            .then(() => {
+                                generator.step("mobilePlatform.enableJSDebuggingMode");
+                                return mobilePlatform.enableJSDebuggingMode();
+                            }).then(() =>
+                                Log.logMessage("Debugging session started successfully."));
+
                     });
                 });
             });
