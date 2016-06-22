@@ -205,7 +205,7 @@ export class MultipleLifetimesAppWorker {
                 if (running) {
                     return this.createSocketToApp(warnOnFailure);
                 }
-                throw new RangeError(`Cannot attach to packager. Are you sure there is a packager and it is running in the port ${this.packagerPort}? If your packager is configured to run in another port make sure to add that to the setting.json.`);
+                throw new Error(`Cannot attach to packager. Are you sure there is a packager and it is running in the port ${this.packagerPort}? If your packager is configured to run in another port make sure to add that to the setting.json.`);
             });
     }
 

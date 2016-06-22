@@ -23,6 +23,7 @@ declare module VSCodeDebugAdapter {
         public sendEvent(event: VSCodeDebugAdapter.InitializedEvent): void;
         public start(input: any, output: any): void;
         public launchRequest(response: any, args: any): void;
+        public attachRequest(response: any, args: any): void;
         public disconnectRequest(response: any, args: any): void;
     }
     class InitializedEvent {
@@ -54,6 +55,13 @@ interface ILaunchArgs {
     args: string[];
     logCatArguments: any;
     program: string;
+}
+
+interface IAttachArgs {
+    internalDebuggerPort?: any;
+    args: string[];
+    program: string;
+    platform: string;
 }
 
 let version = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "package.json"), "utf-8")).version;
@@ -120,9 +128,7 @@ new EntryPointHandler(ProcessType.Debugger).runApp(appName, () => version,
 
         vscodeDebugAdapterPackage.DebugSession.run = originalDebugSessionRun;
 
-        // Intecept the "launchRequest" instance method of NodeDebugSession to interpret arguments
-        const originalNodeDebugSessionLaunchRequest = nodeDebug.NodeDebugSession.prototype.launchRequest;
-        nodeDebug.NodeDebugSession.prototype.launchRequest = function(request: any, args: ILaunchArgs) {
+        function customLaunchOrAttachRequest(request: any, args: ILaunchArgs | IAttachArgs) {
             projectRootPath = path.resolve(args.program, "../..");
             telemetryReporter.reassignTo(new ExtensionTelemetryReporter( // We start to send telemetry
                 appName, version, Telemetry.APPINSIGHTS_INSTRUMENTATIONKEY, projectRootPath));
@@ -156,13 +162,21 @@ new EntryPointHandler(ProcessType.Debugger).runApp(appName, () => version,
                 this.sendEvent(new vscodeDebugAdapterPackage.OutputEvent("Breakpoints may not update. Consider restarting and specifying a different 'internalDebuggerPort' in launch.json"));
             });
 
+            args.args = [
+                args.platform,
+                debugServerListeningPort.toString(),
+            ].concat(args.args);
+        }
+
+        // Intecept the "launchRequest" instance method of NodeDebugSession to interpret arguments
+        const originalNodeDebugSessionLaunchRequest = nodeDebug.NodeDebugSession.prototype.launchRequest;
+        nodeDebug.NodeDebugSession.prototype.launchRequest = function (request: any, args: ILaunchArgs) {
             // We do not permit arbitrary args to be passed to our process
             args.args = [
-                args.platform || "all",
-                debugServerListeningPort.toString(),
                 !isNullOrUndefined(args.iosRelativeProjectPath) ? args.iosRelativeProjectPath : IOSPlatform.DEFAULT_IOS_PROJECT_RELATIVE_PATH,
                 args.target || "simulator",
             ];
+            customLaunchOrAttachRequest(request, args);
 
             if (!isNullOrUndefined(args.logCatArguments)) { // We add the parameter if it's defined (adapter crashes otherwise)
                 args.args = args.args.concat([parseLogCatArguments(args.logCatArguments)]);
@@ -171,7 +185,17 @@ new EntryPointHandler(ProcessType.Debugger).runApp(appName, () => version,
             originalNodeDebugSessionLaunchRequest.call(this, request, args);
         };
 
-        // Intecept the "launchRequest" instance method of NodeDebugSession to interpret arguments
+        // Intecept the "attachRequest" instance method of NodeDebugSession to interpret arguments
+        nodeDebug.NodeDebugSession.prototype.attachRequest = function(request: any, args: IAttachArgs) {
+            // We do not permit arbitrary args to be passed to our process
+            args.args = [];
+            args.platform = "all";
+
+            customLaunchOrAttachRequest(request, args);
+            originalNodeDebugSessionLaunchRequest.call(this, request, args);
+        };
+
+        // Intecept the "disconectRequest" instance method of NodeDebugSession to interpret arguments
         const originalNodeDebugSessionDisconnectRequest = nodeDebug.NodeDebugSession.prototype.disconnectRequest;
         function customDisconnectRequest(response: any, args: any): void {
             try {
