@@ -34,7 +34,7 @@ declare class NodeDebugSession extends VSCodeDebugAdapter.DebugSession {
     public _sourceMaps: SourceMaps;
 }
 
-interface ILaunchArgs {
+interface ILaunchRequestArgs {
     platform: string;
     target?: string;
     internalDebuggerPort?: any;
@@ -42,4 +42,8 @@ interface ILaunchArgs {
     args: string[];
     logCatArguments: any;
     program: string;
+}
+
+interface IAttachRequestArgs {
+    args: string[];
 }

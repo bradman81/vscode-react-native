@@ -75,8 +75,15 @@ new EntryPointHandler(ProcessType.Debugger).runApp(appName, () => version,
         vscodeDebugAdapterPackage.DebugSession.run = originalDebugSessionRun;
 
         // Customize node adapter requests
-        let nodeDebugWrapper = new NodeDebugWrapper(appName, version, telemetryReporter, vscodeDebugAdapterPackage, nodeDebug.NodeDebugSession);
-        nodeDebugWrapper.customizeNodeAdapterRequests();
+        try {
+            let nodeDebugWrapper = new NodeDebugWrapper(appName, version, telemetryReporter, vscodeDebugAdapterPackage, nodeDebug.NodeDebugSession);
+            nodeDebugWrapper.customizeNodeAdapterRequests();
+        } catch (e) {
+            const debugSession = new vscodeDebugAdapterPackage.DebugSession();
+            debugSession.sendEvent(new vscodeDebugAdapterPackage.OutputEvent("Unable to start debug adapter: " + e.toString(), "stderr"));
+            debugSession.sendEvent(new vscodeDebugAdapterPackage.TerminatedEvent());
+            bailOut(e.toString());
+        }
 
         // Run the debug session for the node debug adapter with our modified requests
         vscodeDebugAdapterPackage.DebugSession.run(nodeDebug.NodeDebugSession);
