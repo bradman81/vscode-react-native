@@ -26,6 +26,7 @@ export class NodeDebugWrapper {
 
     private vscodeDebugAdapterPackage: typeof VSCodeDebugAdapter;
     private nodeDebugSession: typeof NodeDebugSession;
+    private originalLaunchRequest: (response: any, args: any) => void;
 
     public constructor(appName: string, version: string, telemetryReporter: ReassignableTelemetryReporter, debugAdapter: typeof VSCodeDebugAdapter, debugSession: typeof NodeDebugSession) {
         this.appName = appName;
@@ -33,6 +34,7 @@ export class NodeDebugWrapper {
         this.telemetryReporter = telemetryReporter;
         this.vscodeDebugAdapterPackage = debugAdapter;
         this.nodeDebugSession = debugSession;
+        this.originalLaunchRequest = this.nodeDebugSession.prototype.launchRequest;
     }
 
     /**
@@ -49,12 +51,10 @@ export class NodeDebugWrapper {
      * Launch should:
      * - Run the packager if needed
      * - Compile and run application
-     * - Preward bundle
+     * - Prewarm bundle
      */
     private customizeLaunchRequest(): void {
-        const originalRequest = this.nodeDebugSession.prototype.launchRequest;
         const nodeDebugWrapper = this;
-
         this.nodeDebugSession.prototype.launchRequest = function (request: any, args: ILaunchRequestArgs) {
             nodeDebugWrapper.requestSetup(this, args);
             nodeDebugWrapper.mobilePlatformOptions.target = args.target || "simulator";
@@ -97,7 +97,7 @@ export class NodeDebugWrapper {
                                     return mobilePlatform.runApp();
                                 })
                                 .then(() =>
-                                    nodeDebugWrapper.attachRequest(originalRequest, this, request, args, mobilePlatform));
+                                    nodeDebugWrapper.attachRequest(this, request, args, mobilePlatform));
                         }
                     }).catch(error =>
                         nodeDebugWrapper.bailOut(this, error.message));
@@ -112,7 +112,7 @@ export class NodeDebugWrapper {
         const nodeDebugWrapper = this;
         this.nodeDebugSession.prototype.attachRequest = function (request: any, args: IAttachRequestArgs) {
             nodeDebugWrapper.requestSetup(this, args);
-            nodeDebugWrapper.attachRequest(nodeDebugWrapper.nodeDebugSession.prototype.launchRequest, this, request, args, null);
+            nodeDebugWrapper.attachRequest(this, request, args, null);
         };
     }
 
@@ -125,11 +125,16 @@ export class NodeDebugWrapper {
 
         this.nodeDebugSession.prototype.disconnectRequest = function (response: any, args: any): void {
             // First we tell the extension to stop monitoring the logcat, and then we disconnect the debugging session
-            nodeDebugWrapper.remoteExtension.stopMonitoringLogcat()
-                .catch(reason =>
-                    Log.logError(`WARNING: Couldn't stop monitoring logcat: ${reason.message || reason}\n`))
-                .finally(() =>
-                    originalRequest.call(this, response, args));
+
+            if (nodeDebugWrapper.mobilePlatformOptions.platform === "android") {
+                nodeDebugWrapper.remoteExtension.stopMonitoringLogcat()
+                    .catch(reason =>
+                        Log.logError(`WARNING: Couldn't stop monitoring logcat: ${reason.message || reason}\n`))
+                    .finally(() =>
+                        originalRequest.call(this, response, args));
+            } else {
+                originalRequest.call(this, response, args);
+            }
         };
     }
 
@@ -164,7 +169,7 @@ export class NodeDebugWrapper {
      * Attach should:
      * - Enable js debugging
      */
-    private attachRequest(nodeAdapterRequest: (request: any, args: any) => void, debugSession: NodeDebugSession, request: any, args: any, mobilePlatform: any): Q.Promise<void> {
+    private attachRequest(debugSession: NodeDebugSession, request: any, args: any, mobilePlatform: any): Q.Promise<void> {
         return TelemetryHelper.generate("attach", (generator) => {
             return Q({})
                 .then(() => {
@@ -175,7 +180,7 @@ export class NodeDebugWrapper {
                         Log.logMessage("Debugger ready. Enable remote debugging in app.");
                     }
                 }).then(() =>
-                    nodeAdapterRequest.call(debugSession, request, args))
+                    this.originalLaunchRequest.call(debugSession, request, args))
                 .catch(error =>
                     this.bailOut(debugSession, error.message));
         });
