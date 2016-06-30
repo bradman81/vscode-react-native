@@ -15,9 +15,12 @@ import {IRunOptions} from "../../common/launchArgs";
 import {PlistBuddy} from "../../common/ios/plistBuddy";
 import {IOSDebugModeManager} from "../../common/ios/iOSDebugModeManager";
 import {OutputVerifier, PatternToFailure} from "../../common/outputVerifier";
+import {RemoteExtension} from "../../common/remoteExtension";
 
 export class IOSPlatform implements IAppPlatform {
     public static DEFAULT_IOS_PROJECT_RELATIVE_PATH = "ios";
+
+    private remoteExtension: RemoteExtension;
 
     private static deviceString = "device";
     private static simulatorString = "simulator";
@@ -37,11 +40,12 @@ export class IOSPlatform implements IAppPlatform {
 
     private static RUN_IOS_SUCCESS_PATTERNS = ["BUILD SUCCEEDED"];
 
-    constructor(private runOptions: IRunOptions) {
+    constructor(private runOptions: IRunOptions, { remoteExtension = RemoteExtension.atProjectRootPath(runOptions.projectRoot)} = {}) {
         this.projectPath = this.runOptions.projectRoot;
         this.simulatorTarget = this.runOptions.target || IOSPlatform.simulatorString;
         this.isSimulator = this.simulatorTarget.toLowerCase() !== IOSPlatform.deviceString;
         this.iosProjectPath = path.join(this.projectPath, this.runOptions.iosRelativeProjectPath);
+        this.remoteExtension = remoteExtension;
     }
 
     public runApp(): Q.Promise<void> {
@@ -110,6 +114,10 @@ export class IOSPlatform implements IAppPlatform {
                 });
             }
         });
+    }
+
+    public startPackager(): Q.Promise<void> {
+        return this.remoteExtension.startPackager();
     }
 
     private generateSuccessPatterns(): Q.Promise<string[]> {

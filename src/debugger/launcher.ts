@@ -42,7 +42,7 @@ export class Launcher {
                                     generator.step("checkPlatformCompatibility");
                                     TargetPlatformHelper.checkTargetPlatformSupport(runOptions.platform);
                                     generator.step("startPackager");
-                                    return this.remoteExtension.startPackager();
+                                    return mobilePlatform.startPackager();
                                 })
                                 .then(() => {
                                     let scriptImporter = new ScriptImporter(runOptions.packagerPort, sourcesStoragePath);

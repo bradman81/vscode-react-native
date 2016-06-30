@@ -3,11 +3,11 @@
 
 import * as vscode from "vscode";
 import * as Q from "q";
-import * as Exponent from "xdl";
+import * as XDL from "xdl";
 import {CommandExecutor} from "../common/commandExecutor";
 import {SettingsHelper} from "./settingsHelper";
 import {Log} from "../common/log/log";
-import {Packager} from "../common/packager";
+import {Packager, PackagerRunAs} from "../common/packager";
 import {AndroidPlatform} from "../common/android/androidPlatform";
 import {PackagerStatus, PackagerStatusIndicator} from "./packagerStatusIndicator";
 import {ReactNativeProjectHelper} from "../common/reactNativeProjectHelper";
@@ -32,6 +32,14 @@ export class CommandPaletteHandler {
     public startPackager(): Q.Promise<void> {
         return this.executeCommandInContext("startPackager", () =>
             this.runStartPackagerCommandAndUpdateStatus());
+    }
+
+    /**
+     * Starts the Exponent packager
+     */
+    public startExponentPackager(): Q.Promise<void> {
+        return this.executeCommandInContext("startExponentPackager", () =>
+            this.runStartPackagerCommandAndUpdateStatus(PackagerRunAs.EXPONENT));
     }
 
     /**
@@ -77,8 +85,16 @@ export class CommandPaletteHandler {
         });
     }
 
-    private runStartPackagerCommandAndUpdateStatus(): Q.Promise<void> {
-        return this.reactNativePackager.start(SettingsHelper.getPackagerPort())
+    private runStartPackagerCommandAndUpdateStatus(startAs: PackagerRunAs = PackagerRunAs.REACT_NATIVE): Q.Promise<any> {
+        if (startAs === PackagerRunAs.EXPONENT) {
+            return this.reactNativePackager.startAsExponent(SettingsHelper.getPackagerPort())
+                .then(exponentUrl => {
+                    this.reactNativePackageStatusIndicator.updatePackagerStatus(PackagerStatus.EXPONENT_PACKAGER_STARTED);
+                    Log.logMessage("Application is running on Exponent.")
+                    Log.logMessage(`Open your exponent app at ${exponentUrl}`);
+                });
+        }
+        return this.reactNativePackager.startAsReactNative(SettingsHelper.getPackagerPort())
             .then(() => this.reactNativePackageStatusIndicator.updatePackagerStatus(PackagerStatus.PACKAGER_STARTED));
     }
 
@@ -129,12 +145,24 @@ export class CommandPaletteHandler {
 
     private executePublishToExpHost(): Q.Promise<boolean> {
         Log.logMessage("Publishing app to Exponent server. This might take a moment");
-        return Q(Exponent.Exp.publishAsync(vscode.workspace.rootPath)).then(response => {
-            if (response.err || !response.expUrl) {
+        return Q(XDL.User.getCurrentUserAsync()).then(user => {
+            if (!user) {
+                Log.logWarning("You're not logged in to exponent. Please login before trying to publish.");
                 return false;
             }
-            Log.logMessage(`App successfully published to ${response.expUrl}`);
-            return true;
+            Log.logMessage(`Publishing as ${user.username}...`);
+            return this.startExponentPackager()
+                .then(() => XDL.Project.publishAsync(vscode.workspace.rootPath))
+                .then(response => {
+                    if (response.err || !response.url) {
+                        return false;
+                    }
+                    Log.logMessage(`App successfully published to ${response.url}`);
+                    return true;
+                });
+        }).catch(() => {
+            Log.logWarning("An error has occured. Please make sure you are logged in to exponent, your project is setup correctly for publishing and your packager is running.");
+            return false;
         });
     }
 }
